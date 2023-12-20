@@ -102,7 +102,8 @@ enum class StatusCode : char {
   ExpressionValidationError = 41,
   ExecutionError = 42,
   // Continue generic codes.
-  AlreadyExists = 45
+  AlreadyExists = 45,
+  EndOfFile = 46
 };
 
 /// \brief An opaque class that allows subsystems to retain
@@ -268,6 +269,11 @@ class ARROW_EXPORT [[nodiscard]] Status : public util::EqualityComparable<Status
   template <typename... Args>
   static Status AlreadyExists(Args&&... args) {
     return Status::FromArgs(StatusCode::AlreadyExists, std::forward<Args>(args)...);
+  }
+  
+  template <typename... Args>
+  static Status EndOfFile(Args&&... args) {
+    return Status::FromArgs(StatusCode::EndOfFile, std::forward<Args>(args)...);
   }
 
   /// Return true iff the status indicates success.
