@@ -98,6 +98,9 @@ std::string Status::CodeAsString(StatusCode code) {
     case StatusCode::ExecutionError:
       type = "ExecutionError in Gandiva";
       break;
+    case StatusCode::EndOfFile:
+      type = "End of File";
+      break;
     default:
       type = "Unknown";
       break;
