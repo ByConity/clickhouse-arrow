@@ -314,7 +314,7 @@ class ARROW_EXPORT [[nodiscard]] Status : public util::EqualityComparable<Status
 
   constexpr bool IsExecutionError() const { return code() == StatusCode::ExecutionError; }
   constexpr bool IsAlreadyExists() const { return code() == StatusCode::AlreadyExists; }
-
+  constexpr bool IsEndOfFile() const {return code() == StatusCode::EndOfFile;}
   /// \brief Return a string representation of this status suitable for printing.
   ///
   /// The string "OK" is returned for success.
