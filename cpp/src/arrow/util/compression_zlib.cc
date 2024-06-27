@@ -18,8 +18,10 @@
 #include "arrow/util/compression_internal.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <memory>
 
@@ -30,6 +32,10 @@
 #include "arrow/status.h"
 #include "arrow/util/logging.h"
 #include "arrow/util/macros.h"
+
+#ifdef __x86_64__
+#include "libdeflate.h"
+#endif
 
 namespace arrow {
 namespace util {
@@ -298,6 +304,20 @@ class GZipCompressor : public Compressor {
 // ----------------------------------------------------------------------
 // gzip codec implementation
 
+#ifdef __x86_64__
+struct LibDeflateDecompressorImpl {
+  std::function<enum libdeflate_result(libdeflate_decompressor*, const void*, size_t,
+                                       void*, size_t, size_t*)>
+      Decompress;
+};
+
+static std::array<LibDeflateDecompressorImpl, 3> libDeflateDecompressors{{
+    {libdeflate_zlib_decompress},
+    {libdeflate_deflate_decompress},
+    {libdeflate_gzip_decompress},
+}};
+#endif
+
 class GZipCodec : public Codec {
  public:
   explicit GZipCodec(int compression_level, GZipFormat::type format)
@@ -381,6 +401,26 @@ class GZipCodec : public Codec {
       // don't signal an error if the input actually contains compressed data.
       return 0;
     }
+
+#ifdef __x86_64__
+    {
+      if (!decompressor) {
+        decompressor = {libdeflate_alloc_decompressor(), libdeflate_free_decompressor};
+        if (!decompressor) {
+          return Status::IOError("libdeflate_alloc_decompressor failed");
+        }
+      }
+
+      size_t out_len;
+      auto& impl = libDeflateDecompressors[static_cast<size_t>(format_)];
+      auto result = impl.Decompress(decompressor.get(), input, input_length, output,
+                                    output_buffer_length, &out_len);
+      if (result != LIBDEFLATE_SUCCESS) {
+        return Status::IOError("libdeflate_decompress failed");
+      }
+      return out_len;
+    }
+#endif
 
     // Reset the stream for this block
     if (inflateReset(&stream_) != Z_OK) {
@@ -494,6 +534,11 @@ class GZipCodec : public Codec {
   bool compressor_initialized_;
   bool decompressor_initialized_;
   int compression_level_;
+
+#ifdef __x86_64__
+  std::unique_ptr<libdeflate_decompressor, void (*)(libdeflate_decompressor*)>
+      decompressor{nullptr, [](libdeflate_decompressor*) {}};
+#endif
 };
 
 }  // namespace
