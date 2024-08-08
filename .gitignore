@@ -90,3 +90,7 @@ java-native-cpp/
 
 # archery files
 dev/archery/build
+
+# build output
+cpp/submodules
+testing
